@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTC Institutional Radar</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0b;
+    --bg-elevated: #131316;
+    --bg-card: #18181c;
+    --border: #26262c;
+    --border-bright: #3a3a42;
+    --text: #f5f5f7;
+    --text-dim: #8a8a94;
+    --text-faint: #5a5a64;
+
+    --lime: #c6fd3b;
+    --lime-dim: #8fb025;
+    --magenta: #ff3ea5;
+    --magenta-dim: #b02870;
+    --amber: #ffb547;
+    --amber-dim: #c98a32;
+    --red: #ff4757;
+    --green: #2ee89a;
+
+    --glow-lime: 0 0 40px rgba(198, 253, 59, 0.35);
+    --glow-magenta: 0 0 40px rgba(255, 62, 165, 0.35);
+    --glow-amber: 0 0 40px rgba(255, 181, 71, 0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Geist', -apple-system, sans-serif;
+    font-weight: 400;
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Grain texture globale */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+    opacity: 0.04;
+    z-index: 1;
+    mix-blend-mode: screen;
+  }
+
+  /* Gradient mesh ambiant */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 60% 50% at 20% 0%, rgba(198, 253, 59, 0.06), transparent),
+      radial-gradient(ellipse 50% 40% at 80% 100%, rgba(255, 62, 165, 0.06), transparent),
+      radial-gradient(ellipse 40% 30% at 50% 50%, rgba(255, 181, 71, 0.03), transparent);
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 2;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+
+  /* ─── HEADER ─────────────────────────────────────────────── */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    margin-bottom: 48px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .brand .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--lime);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .brand .label::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--lime);
+    box-shadow: 0 0 8px var(--lime);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .brand h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .brand h1 em {
+    font-style: italic;
+    background: linear-gradient(120deg, var(--lime), var(--amber));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .brand p {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 8px;
+  }
+
+  .header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    text-align: right;
+  }
+
+  .btc-price {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .btc-change {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+  .btc-change.up { color: var(--green); background: rgba(46, 232, 154, 0.1); }
+  .btc-change.down { color: var(--red); background: rgba(255, 71, 87, 0.1); }
+
+  .last-update {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-faint);
+    letter-spacing: 0.05em;
+  }
+
+  /* ─── HERO SIGNAL ──────────────────────────────────────── */
+  .hero {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 24px;
+    margin-bottom: 48px;
+  }
+
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; }
+  }
+
+  .signal-card {
+    position: relative;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px;
+    overflow: hidden;
+  }
+
+  .signal-card::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: 20px;
+    padding: 1px;
+    background: linear-gradient(135deg, transparent 40%, var(--lime), transparent 60%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.3;
+    pointer-events: none;
+  }
+
+  .signal-card[data-signal="LONG"]::before {
+    background: linear-gradient(135deg, transparent 40%, var(--lime), transparent 60%);
+  }
+  .signal-card[data-signal="SHORT"]::before {
+    background: linear-gradient(135deg, transparent 40%, var(--magenta), transparent 60%);
+  }
+  .signal-card[data-signal="NEUTRE"]::before {
+    background: linear-gradient(135deg, transparent 40%, var(--amber), transparent 60%);
+  }
+
+  .signal-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+  }
+
+  .signal-main {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    margin-bottom: 8px;
+  }
+
+  .signal-value {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(64px, 10vw, 112px);
+    font-weight: 400;
+    line-height: 0.9;
+    letter-spacing: -0.04em;
+  }
+
+  [data-signal="LONG"] .signal-value {
+    color: var(--lime);
+    text-shadow: var(--glow-lime);
+  }
+  [data-signal="SHORT"] .signal-value {
+    color: var(--magenta);
+    text-shadow: var(--glow-magenta);
+  }
+  [data-signal="NEUTRE"] .signal-value {
+    color: var(--amber);
+    text-shadow: var(--glow-amber);
+  }
+
+  .signal-score {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text);
+    opacity: 0.7;
+  }
+
+  .signal-verdict {
+    font-family: 'Instrument Serif', serif;
+    font-size: 20px;
+    font-style: italic;
+    color: var(--text-dim);
+    margin-top: 16px;
+  }
+
+  /* Barre de score */
+  .score-bar {
+    margin-top: 32px;
+    height: 8px;
+    background: var(--bg);
+    border-radius: 4px;
+    position: relative;
+    overflow: visible;
+  }
+
+  .score-bar-track {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, var(--magenta), var(--amber) 50%, var(--lime));
+    border-radius: 4px;
+    opacity: 0.3;
+  }
+
+  .score-bar-indicator {
+    position: absolute;
+    top: 50%;
+    width: 4px;
+    height: 24px;
+    background: var(--text);
+    border-radius: 2px;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 12px rgba(255,255,255,0.6);
+    transition: left 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .score-bar-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-faint);
+    letter-spacing: 0.1em;
+  }
+
+  /* Jauge circulaire SVG */
+  .gauge-wrap {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .gauge-container {
+    position: relative;
+    width: 100%;
+    max-width: 280px;
+  }
+
+  .gauge-svg {
+    width: 100%;
+    height: auto;
+    transform: rotate(-90deg);
+  }
+
+  .gauge-track {
+    fill: none;
+    stroke: var(--bg);
+    stroke-width: 16;
+  }
+
+  .gauge-fill {
+    fill: none;
+    stroke-width: 16;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .gauge-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+
+  .gauge-center .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .gauge-center .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1;
+    margin-top: 4px;
+  }
+
+  /* ─── SOURCES GRID ─────────────────────────────────────── */
+  .sources-section {
+    margin-bottom: 48px;
+  }
+
+  .section-title {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .section-title h2 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 32px;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+  }
+
+  .section-title .count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+    letter-spacing: 0.1em;
+  }
+
+  .sources-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .source-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .source-card:hover {
+    border-color: var(--border-bright);
+    transform: translateY(-2px);
+  }
+
+  .source-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--text-faint);
+  }
+
+  .source-card.pos::before { background: var(--lime); box-shadow: 0 0 12px var(--lime); }
+  .source-card.neg::before { background: var(--magenta); box-shadow: 0 0 12px var(--magenta); }
+  .source-card.neu::before { background: var(--amber); }
+
+  .source-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .source-name {
+    font-family: 'Geist', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+
+  .source-weight {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-faint);
+    padding: 2px 6px;
+    background: var(--bg);
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+  }
+
+  .source-score {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+
+  .source-card.pos .source-score { color: var(--lime); }
+  .source-card.neg .source-score { color: var(--magenta); }
+  .source-card.neu .source-score { color: var(--amber); }
+
+  .source-meta {
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .meta-row {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+
+  .meta-row .key { color: var(--text-faint); }
+  .meta-row .val { color: var(--text); font-weight: 500; }
+
+  .source-card.unavailable {
+    opacity: 0.5;
+  }
+
+  .source-card.unavailable .source-score {
+    color: var(--text-faint);
+    font-size: 16px;
+  }
+
+  /* ─── CHART SECTION ────────────────────────────────────── */
+  .chart-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px;
+    margin-bottom: 48px;
+  }
+
+  .chart-wrapper {
+    position: relative;
+    height: 380px;
+    margin-top: 24px;
+  }
+
+  /* ─── FOOTER ───────────────────────────────────────────── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding-top: 24px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-faint);
+    letter-spacing: 0.05em;
+  }
+
+  footer a {
+    color: var(--lime);
+    text-decoration: none;
+  }
+  footer a:hover { text-decoration: underline; }
+
+  .disclaimer {
+    max-width: 600px;
+    line-height: 1.6;
+  }
+
+  /* ─── LOADER ───────────────────────────────────────────── */
+  .loader {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .loader-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .loader-bar {
+    width: 200px;
+    height: 2px;
+    background: var(--bg-elevated);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .loader-bar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, var(--lime), transparent);
+    animation: sweep 1.5s infinite;
+  }
+
+  @keyframes sweep {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(200%); }
+  }
+
+  /* Stagger animations au chargement */
+  .fade-in {
+    opacity: 0;
+    transform: translateY(12px);
+    animation: fadeIn 0.6s forwards;
+  }
+
+  @keyframes fadeIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .fade-in:nth-child(1) { animation-delay: 0.1s; }
+  .fade-in:nth-child(2) { animation-delay: 0.2s; }
+  .fade-in:nth-child(3) { animation-delay: 0.3s; }
+  .fade-in:nth-child(4) { animation-delay: 0.4s; }
+
+  @media (max-width: 640px) {
+    .container { padding: 20px 16px 60px; }
+    header { flex-direction: column; align-items: flex-start; }
+    .header-right { align-items: flex-start; text-align: left; }
+    .signal-card, .gauge-wrap, .chart-card { padding: 24px; }
+    .sources-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <div id="loader" class="loader">
+      <div class="loader-bar"></div>
+      <div class="loader-text">Chargement des données...</div>
+    </div>
+
+    <div id="app" style="display:none;">
+      <header>
+        <div class="brand">
+          <div class="label">Institutional Radar · BTC</div>
+          <h1>Positionnement <em>institutionnel</em></h1>
+          <p>Signal composite quotidien — CFTC · Open Interest · Funding · ETF spot</p>
+        </div>
+        <div class="header-right">
+          <div id="btcPrice" class="btc-price">—</div>
+          <div id="btcChange" class="btc-change">—</div>
+          <div id="lastUpdate" class="last-update">—</div>
+        </div>
+      </header>
+
+      <section class="hero">
+        <div id="signalCard" class="signal-card fade-in" data-signal="NEUTRE">
+          <div class="signal-label">Signal actuel</div>
+          <div class="signal-main">
+            <div id="signalValue" class="signal-value">—</div>
+            <div id="signalScore" class="signal-score">—</div>
+          </div>
+          <div id="signalVerdict" class="signal-verdict">—</div>
+          <div class="score-bar">
+            <div class="score-bar-track"></div>
+            <div id="scoreBarIndicator" class="score-bar-indicator" style="left: 50%;"></div>
+          </div>
+          <div class="score-bar-labels">
+            <span>SHORT -100</span>
+            <span>NEUTRE 0</span>
+            <span>LONG +100</span>
+          </div>
+        </div>
+
+        <div class="gauge-wrap fade-in">
+          <div class="gauge-container">
+            <svg class="gauge-svg" viewBox="0 0 200 200">
+              <circle class="gauge-track" cx="100" cy="100" r="80"/>
+              <circle id="gaugeFill" class="gauge-fill" cx="100" cy="100" r="80"
+                      stroke-dasharray="502" stroke-dashoffset="502"/>
+            </svg>
+            <div class="gauge-center">
+              <div class="label">Score</div>
+              <div id="gaugeValue" class="value">—</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sources-section fade-in">
+        <div class="section-title">
+          <h2>Sources</h2>
+          <span class="count">4 INDICATEURS PONDÉRÉS</span>
+        </div>
+        <div id="sourcesGrid" class="sources-grid"></div>
+      </section>
+
+      <section class="chart-card fade-in">
+        <div class="section-title">
+          <h2>Historique 90 jours</h2>
+          <span class="count">SCORE COMPOSITE QUOTIDIEN</span>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="historyChart"></canvas>
+        </div>
+      </section>
+
+      <footer>
+        <div class="disclaimer">
+          <strong style="color: var(--text-dim);">Disclaimer :</strong>
+          Cet outil présente un agrégat de données publiques sur le positionnement des acteurs
+          institutionnels. Ce n'est ni un conseil financier, ni un signal de trading. Les positions
+          institutionnelles peuvent évoluer avant la publication des données.
+        </div>
+        <div>
+          <a href="https://github.com" target="_blank">source code</a> ·
+          <span>updated daily · 08:00 UTC</span>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+<script>
+  // ─── COULEURS PAR SIGNAL ─────────────────────────────────
+  const COLORS = {
+    LONG: { main: '#c6fd3b', glow: 'rgba(198,253,59,0.5)' },
+    SHORT: { main: '#ff3ea5', glow: 'rgba(255,62,165,0.5)' },
+    NEUTRE: { main: '#ffb547', glow: 'rgba(255,181,71,0.5)' },
+  };
+
+  function fmt(n, opts = {}) {
+    if (n === null || n === undefined) return '—';
+    return new Intl.NumberFormat('en-US', opts).format(n);
+  }
+
+  function classifyScore(s) {
+    if (s === null || s === undefined) return 'neu';
+    if (s >= 15) return 'pos';
+    if (s <= -15) return 'neg';
+    return 'neu';
+  }
+
+  function renderSignal(data) {
+    const { score, signal, verdict } = data.composite;
+    const card = document.getElementById('signalCard');
+    card.setAttribute('data-signal', signal);
+
+    document.getElementById('signalValue').textContent = signal;
+    document.getElementById('signalScore').textContent =
+      (score >= 0 ? '+' : '') + score.toFixed(1);
+    document.getElementById('signalVerdict').textContent = verdict;
+
+    // Indicateur barre (score -100 à +100 → 0% à 100%)
+    const pct = Math.max(0, Math.min(100, (score + 100) / 2));
+    document.getElementById('scoreBarIndicator').style.left = pct + '%';
+
+    // Jauge circulaire
+    const color = COLORS[signal];
+    const gaugeFill = document.getElementById('gaugeFill');
+    const circumference = 2 * Math.PI * 80;
+    const fillPct = Math.abs(score) / 100;
+    gaugeFill.style.stroke = color.main;
+    gaugeFill.style.filter = `drop-shadow(0 0 8px ${color.glow})`;
+    setTimeout(() => {
+      gaugeFill.style.strokeDashoffset = circumference * (1 - fillPct);
+    }, 100);
+
+    const gaugeValue = document.getElementById('gaugeValue');
+    gaugeValue.textContent = (score >= 0 ? '+' : '') + score.toFixed(0);
+    gaugeValue.style.color = color.main;
+  }
+
+  function renderBtc(data) {
+    const btc = data.btc || {};
+    document.getElementById('btcPrice').textContent =
+      btc.price_usd !== null && btc.price_usd !== undefined
+        ? '$' + fmt(btc.price_usd, { maximumFractionDigits: 0 })
+        : '—';
+
+    const change = btc.change_24h_pct;
+    const chEl = document.getElementById('btcChange');
+    if (change !== null && change !== undefined) {
+      chEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '% 24h';
+      chEl.className = 'btc-change ' + (change >= 0 ? 'up' : 'down');
+    }
+
+    const ts = new Date(data.timestamp);
+    document.getElementById('lastUpdate').textContent =
+      'MAJ ' + ts.toLocaleString('fr-FR', {
+        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
+      }) + ' UTC';
+  }
+
+  function renderSources(data) {
+    const grid = document.getElementById('sourcesGrid');
+    grid.innerHTML = '';
+
+    const order = ['cot', 'oi', 'funding', 'etf'];
+    order.forEach(key => {
+      const src = data.sources[key];
+      if (!src) return;
+
+      const cls = src.available ? classifyScore(src.score) : 'neu';
+      const card = document.createElement('div');
+      card.className = 'source-card ' + cls + (src.available ? '' : ' unavailable');
+
+      let metaHtml = '';
+      if (src.available) {
+        const d = src.data || {};
+        const rows = buildMetaRows(key, d);
+        metaHtml = rows.map(r =>
+          `<div class="meta-row"><span class="key">${r.key}</span><span class="val">${r.val}</span></div>`
+        ).join('');
+      } else {
+        metaHtml = `<div class="meta-row"><span class="key">Statut</span><span class="val" style="color: var(--red);">Indisponible</span></div>`;
+      }
+
+      const scoreText = src.available
+        ? (src.score >= 0 ? '+' : '') + src.score.toFixed(1)
+        : 'N/A';
+
+      card.innerHTML = `
+        <div class="source-header">
+          <div class="source-name">${src.label}</div>
+          <div class="source-weight">${src.weight}%</div>
+        </div>
+        <div class="source-score">${scoreText}</div>
+        <div class="source-meta">${metaHtml}</div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  function buildMetaRows(key, d) {
+    switch (key) {
+      case 'cot':
+        return [
+          { key: 'Rapport', val: d.report_date || '—' },
+          { key: 'Longs', val: fmt(d.long) },
+          { key: 'Shorts', val: fmt(d.short) },
+          { key: 'Net', val: (d.net >= 0 ? '+' : '') + fmt(d.net) },
+          { key: 'Z-score 52s', val: d.z_score?.toFixed(2) || '—' },
+        ];
+      case 'oi':
+        return [
+          { key: 'OI total', val: '$' + fmt(d.oi_usd_now / 1e9, { maximumFractionDigits: 2 }) + 'B' },
+          { key: 'OI Δ7j', val: (d.oi_change_7d_pct >= 0 ? '+' : '') + d.oi_change_7d_pct + '%' },
+          { key: 'Prix Δ7j', val: (d.price_change_7d_pct >= 0 ? '+' : '') + d.price_change_7d_pct + '%' },
+          { key: 'Régime', val: d.interpretation },
+        ];
+      case 'funding':
+        return [
+          { key: 'Taux actuel', val: d.current_rate_pct + '%' },
+          { key: 'Moy. 7j', val: d.avg_7d_pct + '%' },
+          { key: 'Annualisé', val: d.annualized_pct + '%' },
+          { key: 'Régime', val: d.regime },
+        ];
+      case 'etf':
+        return [
+          { key: 'Dernier jour', val: d.latest_date },
+          { key: 'Flux 24h', val: (d.latest_flow_musd >= 0 ? '+' : '') + '$' + fmt(d.latest_flow_musd) + 'M' },
+          { key: 'Cumul 5j', val: (d.cumulative_5d_musd >= 0 ? '+' : '') + '$' + fmt(d.cumulative_5d_musd) + 'M' },
+          { key: 'Tendance', val: d.trend },
+        ];
+      default:
+        return [];
+    }
+  }
+
+  function renderChart(history) {
+    const ctx = document.getElementById('historyChart');
+    const labels = history.map(h => h.date);
+    const scores = history.map(h => h.composite_score);
+    const prices = history.map(h => h.btc_price);
+
+    // Couleur dégradée selon valeur
+    const bgGrad = ctx.getContext('2d').createLinearGradient(0, 0, 0, 380);
+    bgGrad.addColorStop(0, 'rgba(198, 253, 59, 0.25)');
+    bgGrad.addColorStop(0.5, 'rgba(255, 181, 71, 0.1)');
+    bgGrad.addColorStop(1, 'rgba(255, 62, 165, 0.25)');
+
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Score Institutionnel',
+            data: scores,
+            borderColor: '#c6fd3b',
+            backgroundColor: bgGrad,
+            borderWidth: 2,
+            fill: true,
+            tension: 0.35,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointHoverBackgroundColor: '#c6fd3b',
+            yAxisID: 'y',
+          },
+          {
+            label: 'Prix BTC',
+            data: prices,
+            borderColor: '#ffb547',
+            backgroundColor: 'transparent',
+            borderWidth: 1.5,
+            borderDash: [4, 4],
+            fill: false,
+            tension: 0.3,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            yAxisID: 'y1',
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            display: true,
+            labels: {
+              color: '#8a8a94',
+              font: { family: 'JetBrains Mono', size: 11 },
+              usePointStyle: true,
+              pointStyle: 'line',
+            },
+          },
+          tooltip: {
+            backgroundColor: '#18181c',
+            borderColor: '#26262c',
+            borderWidth: 1,
+            titleFont: { family: 'JetBrains Mono', size: 11 },
+            bodyFont: { family: 'JetBrains Mono', size: 12 },
+            padding: 12,
+            callbacks: {
+              label: (ctx) => {
+                const v = ctx.parsed.y;
+                if (ctx.dataset.label === 'Prix BTC') return `Prix: $${fmt(v, {maximumFractionDigits: 0})}`;
+                return `Score: ${v >= 0 ? '+' : ''}${v.toFixed(1)}`;
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: {
+              color: '#5a5a64',
+              font: { family: 'JetBrains Mono', size: 10 },
+              maxTicksLimit: 8,
+            },
+            grid: { color: '#18181c' },
+          },
+          y: {
+            position: 'left',
+            min: -100, max: 100,
+            ticks: {
+              color: '#8a8a94',
+              font: { family: 'JetBrains Mono', size: 10 },
+              callback: v => (v > 0 ? '+' : '') + v,
+            },
+            grid: { color: '#18181c' },
+            title: {
+              display: true,
+              text: 'Score',
+              color: '#c6fd3b',
+              font: { family: 'JetBrains Mono', size: 10 },
+            },
+          },
+          y1: {
+            position: 'right',
+            ticks: {
+              color: '#ffb547',
+              font: { family: 'JetBrains Mono', size: 10 },
+              callback: v => '$' + fmt(v / 1000, { maximumFractionDigits: 0 }) + 'k',
+            },
+            grid: { display: false },
+            title: {
+              display: true,
+              text: 'BTC/USD',
+              color: '#ffb547',
+              font: { family: 'JetBrains Mono', size: 10 },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async function loadData() {
+    try {
+      const cacheBuster = Date.now();
+      const [latestResp, historyResp] = await Promise.all([
+        fetch(`./data/latest.json?t=${cacheBuster}`),
+        fetch(`./data/history.json?t=${cacheBuster}`),
+      ]);
+
+      if (!latestResp.ok || !historyResp.ok) {
+        throw new Error('Fichier de données introuvable');
+      }
+
+      const latest = await latestResp.json();
+      const history = await historyResp.json();
+
+      document.getElementById('loader').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+
+      renderBtc(latest);
+      renderSignal(latest);
+      renderSources(latest);
+      renderChart(history);
+    } catch (err) {
+      document.getElementById('loader').innerHTML = `
+        <div style="text-align:center; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 13px;">
+          <div style="font-size: 40px; margin-bottom: 16px;">⚠</div>
+          <div>Impossible de charger les données.</div>
+          <div style="margin-top: 8px; color: var(--text-faint); font-size: 11px;">${err.message}</div>
+        </div>
+      `;
+    }
+  }
+
+  loadData();
+</script>
+</body>
+</html>
